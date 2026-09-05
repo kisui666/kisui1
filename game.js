@@ -693,6 +693,7 @@ function spawnEnemy(typeKey, x, y) {
         speed: t.speed * (1 + (wave - 1) * 0.02) * (currentWaveMods.speedMult || 1) * diff.spd,
         score: t.score, xp: t.xp, color: t.color,
         shape: t.shape, behavior: t.behavior,
+        coinMin: t.coinMin, coinMax: t.coinMax, // v23:金币掉落区间(随模板携带)
         // 运行时
         t: 0,
         shootCd: rand(60, 120),
@@ -2717,12 +2718,12 @@ function update(dt) {
         }
     }
 
-    // --- 拾取物(经验) ---
+    // --- 拾取物(经验/金币/血包) ---
     for (let i = pickups.length - 1; i >= 0; i--) {
         const p = pickups[i];
 
+        // Step 1: 重力/落定(xp 和 coin 下落, heal 不需要)
         if (p.type === "xp" || p.type === "coin") {
-            // 经验球/金币先缓慢下落，落到屏幕下方后停住，不会出屏幕
             if (!p.settled) {
                 p.vy += p.gravity * dt;
                 if (p.y + p.r >= p.floorY) {
@@ -2735,53 +2736,36 @@ function update(dt) {
                     }
                 }
             }
-            p.x = clamp(p.x + p.vx * dt, p.r, W - p.r);
-            p.y = clamp(p.y + p.vy * dt, p.r, p.floorY - p.r);
-        } else {
-            // 血包仍然保持原本行为
+        }
+
+        // Step 2: 吸向玩家(所有类型,xp/coin 引力稍强)
+        {
             const dx = player.x - p.x, dy = player.y - p.y;
             const d = Math.hypot(dx, dy);
             if (d < 120) {
-                const pull = 0.15;
+                const pull = (p.type === "xp" || p.type === "coin") ? 0.18 : 0.15;
                 p.vx += (dx / d) * pull * dt;
                 p.vy += (dy / d) * pull * dt;
             }
-            p.x += p.vx * dt;
-            p.y += p.vy * dt;
+        }
+
+        // Step 3: 位置更新 + 摩擦 + 边界(统一处理)
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        if (p.type === "xp" || p.type === "coin") {
+            p.vx *= 0.92;
+            p.vy *= 0.92;
+            p.x = clamp(p.x, p.r, W - p.r);
+            p.y = clamp(p.y, p.r, p.floorY - p.r);
+        } else {
+            // heal
             p.vx *= 0.95;
             p.vy *= 0.95;
             p.x = clamp(p.x, p.r, W - p.r);
             p.y = clamp(p.y, p.r, H - p.r);
         }
 
-        // 吸向玩家
-        if (p.type !== "xp") {
-            const dx = player.x - p.x, dy = player.y - p.y;
-            const d = Math.hypot(dx, dy);
-            if (d < 120) {
-                const pull = 0.15;
-                p.vx += (dx / d) * pull * dt;
-                p.vy += (dy / d) * pull * dt;
-            }
-        }
-
-        // 经验球在落定后仍会被玩家吸收
-        if (p.type === "xp") {
-            const dx = player.x - p.x, dy = player.y - p.y;
-            const d = Math.hypot(dx, dy);
-            if (d < 120) {
-                const pull = 0.18;
-                p.vx += (dx / d) * pull * dt;
-                p.vy += (dy / d) * pull * dt;
-            }
-            p.x += p.vx * dt;
-            p.y += p.vy * dt;
-            p.vx *= 0.92;
-            p.vy *= 0.92;
-            p.x = clamp(p.x, p.r, W - p.r);
-            p.y = clamp(p.y, p.r, p.floorY - p.r);
-        }
-
+        // Step 4: 碰撞检测
         if (circleHit(p, player)) {
             collectPickup(p);
             pickups.splice(i, 1);
