@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Game JS Syntax Check</title></head>
+<body>
+<pre id="output"></pre>
+<script>
+const out = document.getElementById('output');
+
+fetch('game.js?v=9')
+.then(r => r.text())
+.then(src => {
+    const lines = src.split(/\r?\n/);
+    
+    let depth = 0;
+    let inString = null, inTpl = false, inLineCmt = false, inBlkCmt = false;
+    let braceStack = [];
+    
+    const keyLines = [1062, 1084, 1132, 1229, 1230, 1231, 1232, 1408, 1409, 1410, 1411, 3977];
+    
+    for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+        const line = lines[lineIdx];
+        const lineNum = lineIdx + 1;
+        
+        if (keyLines.includes(lineNum)) {
+            out.textContent += 'BEFORE line ' + lineNum + ': depth=' + depth + ' stack=' + JSON.stringify(braceStack.map(b=>b.line)) + ' inStr=' + inString + ' inTpl=' + inTpl + ' inLine=' + inLineCmt + ' inBlk=' + inBlkCmt + '\n';
+        }
+        
+        for (let j = 0; j < line.length; j++) {
+            const c = line[j], nxt = line[j+1] || '';
+            
+            if (inBlkCmt) { if (c === '*' && nxt === '/') { inBlkCmt = false; j++; } continue; }
+            if (inLineCmt) { continue; }
+            if (inString) { if (c === '\\') { j++; continue; } if (c === inString) { inString = null; } continue; }
+            if (inTpl) { if (c === '\\') { j++; continue; } if (c === '`') { inTpl = false; } continue; }
+            if (c === '/' && nxt === '/') { inLineCmt = true; j++; continue; }
+            if (c === '/' && nxt === '*') { inBlkCmt = true; j++; continue; }
+            if (c === '"' || c === "'") { inString = c; continue; }
+            if (c === '`') { inTpl = true; continue; }
+            
+            if (c === '{') { depth++; braceStack.push({line: lineNum}); }
+            else if (c === '}') { depth--; if (braceStack.length > 0) braceStack.pop(); }
+        }
+        if (inLineCmt) inLineCmt = false;
+        
+        if (keyLines.includes(lineNum)) {
+            out.textContent += 'AFTER line ' + lineNum + ': depth=' + depth + ' stack=' + JSON.stringify(braceStack.map(b=>b.line)) + '\n';
+        }
+    }
+    
+    out.textContent += '\nFinal depth: ' + depth + ', stack=' + JSON.stringify(braceStack.map(b => b.line)) + '\n';
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>黄金裔肉鸽战机</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 顶部信息栏 -->
+        <header class="topbar">
+            <a href="../../index.html" class="back-btn">← 返回</a>
+            <div class="stat">
+                <span class="label">波次</span>
+                <span class="val" id="waveVal">1</span>
+            </div>
+            <div class="stat">
+                <span class="label">分数</span>
+                <span class="val" id="scoreVal">0</span>
+            </div>
+            <div class="stat">
+                <span class="label">最高</span>
+                <span class="val" id="bestVal">0</span>
+            </div>
+            <div class="stat coin-stat">
+                <span class="label">金币</span>
+                <span class="val" id="coinVal">🪙0</span>
+            </div>
+            <div class="ctrl-group">
+                <button class="pause-btn" id="muteBtn" title="静音 (M)">♪</button>
+                <button class="pause-btn" id="pauseBtn" title="暂停 (P)">II</button>
+            </div>
+        </header>
+
+        <!-- 生命/护盾条 -->
+        <div class="bars">
+            <div class="bar-row">
+                <span class="bar-label">HP</span>
+                <div class="bar"><div class="bar-fill hp" id="hpFill"></div></div>
+                <span class="bar-num" id="hpNum">100/100</span>
+            </div>
+            <div class="bar-row">
+                <span class="bar-label">XP</span>
+                <div class="bar"><div class="bar-fill xp" id="xpFill"></div></div>
+                <span class="bar-num" id="xpNum">0/3</span>
+            </div>
+            <!-- 终极技能充能条 -->
+            <div class="bar-row ult-row">
+                <div class="ult-icon-wrap" id="ultIcon">
+                    <img id="ultIconImg" alt="技能" style="display:none">
+                    <span id="ultIconEmoji">💫</span>
+                    <div class="ult-cooldown-overlay" id="ultCooldown"></div>
+                    <div class="ult-ready-hint" id="ultReadyHint">就绪!</div>
+                </div>
+                <div class="bar">
+                    <div class="bar-fill ult" id="ultChargeFill"></div>
+                </div>
+                <span class="bar-num" id="ultNum">终极技能 0%</span>
+                <button class="ult-mode-btn" id="ultModeBtn" title="切换自动/手动释放 (T)">自动</button>
+            </div>
+            <!-- 提宝小技能(仅提宝英雄显示) -->
+            <div class="bar-row cannon-mini-row" id="cannonMiniRow" hidden>
+                <div class="cannon-mini-icon-wrap" id="cannonMiniIcon">
+                    <span class="cannon-mini-emoji">💥</span>
+                    <div class="cannon-mini-cd-overlay" id="cannonMiniCd"></div>
+                </div>
+                <div class="bar cannon-mini-bar">
+                    <div class="bar-fill cannon-mini-fill" id="cannonMiniFill"></div>
+                </div>
+                <span class="bar-num" id="cannonMiniNum">炮击强化 就绪</span>
+                <button class="cannon-mini-mode-btn" id="cannonMiniModeBtn" title="切换自动/手动 (R)">自动</button>
+            </div>
+            <!-- 英雄状态面板(左侧固定) -->
+            <section class="hero-status-panel" id="heroStatusPanel" aria-label="已获升级与天赋">
+                <header class="hero-status-header">
+                    <span class="hero-status-icon">📋</span>
+                    <span class="hero-status-title">英雄成长</span>
+                    <span class="hero-status-count" id="heroStatusCount">0</span>
+                </header>
+                <div class="hero-status-tabs">
+                    <button class="hero-status-tab active" data-tab="upgrades">升级 <span id="tabCountUpgrade">0</span></button>
+                    <button class="hero-status-tab" data-tab="talents">天赋 <span id="tabCountTalent">0</span></button>
+                    <button class="hero-status-tab" data-tab="all">全部</button>
+                </div>
+                <div class="hero-status-list" id="heroStatusList">
+                    <div class="hero-status-empty" id="heroStatusEmpty">
+                        尚未获得任何强化<br>
+                        <span>击杀敌人获得经验 · 波次商店购买永久天赋</span>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- 游戏画布 -->
+        <div class="canvas-wrap">
+            <canvas id="game" width="480" height="720"></canvas>
+
+            <!-- v22: 60秒波次倒计时 HUD(画布顶部居中) -->
+            <div id="waveTimerHud" class="wave-timer-hud" hidden>⏱ 60s</div>
+
+            <!-- Boss 出场倒计时全屏遮罩 -->
+            <div id="bossCountdownOverlay" class="boss-countdown-overlay" hidden>
+                <div class="boss-countdown-text">
+                    <div class="boss-countdown-title">⚠ Boss 即将出现 ⚠</div>
+                    <div class="boss-countdown-num" id="bossCountdownNum">3</div>
+                </div>
+            </div>
+
+            <!-- 计数器胶带滚动动画(动态填充) -->
+            <div id="counterAnim" class="counter-anim-overlay" hidden>
+                <div class="counter-anim-box">
+                    <div class="counter-anim-label">通关计数</div>
+                    <div class="counter-anim-viewport">
+                        <div class="counter-anim-strip" id="counterAnimStrip"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 升级选择面板 -->
+            <div class="overlay" id="upgradePanel" hidden>
+                <div class="panel">
+                    <h2>波次 <span id="upgradeWave">1</span> 完成</h2>
+                    <p class="panel-sub">选择一项强化</p>
+                    <div class="upgrade-list" id="upgradeList"></div>
+                </div>
+            </div>
+
+        <!-- 模式选择面板 -->
+            <div class="overlay" id="modePanel">
+                <div class="panel mode-panel">
+                    <h1>星际肉鸽战机</h1>
+                    <p class="panel-sub">选择你的飞行模式</p>
+                    <div class="mode-list mode-list-single">
+                        <button class="mode-card" id="endlessModeBtn">
+                            <div class="mode-emoji">♾️</div>
+                            <div class="mode-info">
+                                <div class="mode-name">无尽模式</div>
+                                <div class="mode-desc">全英雄解锁 · 20波一轮 · Boss挑战 · 波次商店</div>
+                            </div>
+                        </button>
+                        <!-- 剧情模式入口 - 暂时隐藏(逻辑保留,重新开放时恢复此按钮即可)
+                        <button class="mode-card" id="storyModeBtn">
+                            <div class="mode-emoji">📖</div>
+                            <div class="mode-info">
+                                <div class="mode-name">剧情模式</div>
+                                <div class="mode-desc">锁定英雄通关 · 击败Boss解锁新角色</div>
+                            </div>
+                        </button>
+                        -->
+                    </div>
+                    <div class="mode-continue" id="modeContinue" hidden>
+                        <p class="continue-hint">检测到上次进度：<span id="continueInfo">—</span></p>
+                        <div class="continue-btns">
+                            <button class="big-btn" id="continueBtn">继续上次游戏</button>
+                            <button class="ghost-btn" id="reselectModeBtn">重新选择模式</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 开始菜单 -->
+            <div class="overlay" id="startPanel">
+                <div class="panel">
+                    <h1>星际肉鸽战机</h1>
+                    <p class="panel-sub">每波过后随机强化 · 死亡重来</p>
+                    <div class="how-to">
+                        <div><b>移动</b>:方向键 / WASD</div>
+                        <div><b>射击</b>:自动开火</div>
+                        <div><b>暂停</b>:P / Esc</div>
+                    </div>
+                    <button class="big-btn" id="startBtn">选择战机</button>
+                    <p class="hint">提示:击杀敌人获得经验,经验满后进入升级选择</p>
+                </div>
+            </div>
+
+            <!-- 英雄选择面板 -->
+            <div class="overlay" id="heroPanel" hidden>
+                <div class="panel hero-panel">
+                    <h2>选择你的战机</h2>
+                    <p class="panel-sub">每位驾驶员拥有独特能力</p>
+                    <div class="hero-layout">
+                        <div class="hero-grid" id="heroGrid"></div>
+                        <div class="hero-preview" id="heroPreview">
+                            <div class="hero-preview-empty">悬停或点击查看战机详情</div>
+                        </div>
+                    </div>
+                    <div class="hero-action-row">
+                        <button class="ghost-btn meta-talent-btn" id="metaTalentBtn" hidden title="首次通关20波后解锁">🔮 天赋</button>
+                        <button class="big-btn" id="heroConfirmBtn" disabled>出击</button>
+                    </div>
+                    <button class="ghost-btn" id="heroBackBtn">返回</button>
+                </div>
+            </div>
+
+            <!-- 难度选择面板(出击后、开局前) -->
+            <div class="overlay" id="difficultyPanel" hidden>
+                <div class="panel difficulty-panel">
+                    <h2>选择挑战难度</h2>
+                    <p class="panel-sub">通关当前难度可解锁下一难度 · 难度影响怪物生命/伤害/移速</p>
+                    <div class="difficulty-list" id="difficultyList"></div>
+                    <button class="ghost-btn" id="difficultyBackBtn">返回选机</button>
+                </div>
+            </div>
+
+            <!-- 元天赋界面(首次通关20波后解锁) -->
+            <div class="overlay talent-overlay" id="metaTalentPanel" hidden>
+                <div class="panel talent-panel">
+                    <h2>🔮 元天赋</h2>
+                    <p class="panel-sub">角色专属永久天赋 · 后续版本开放</p>
+                    <div class="talent-list" id="metaTalentList"></div>
+                    <div class="talent-footer">
+                        <span class="talent-hint">提示:元天赋内容敬请期待</span>
+                        <button class="big-btn" id="metaTalentCloseBtn">返回</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 波次商店(每波清场后):固定3商品 + 手动刷新(阶梯费用) -->
+            <div class="overlay talent-overlay" id="shopPanel" hidden>
+                <div class="panel talent-panel shop-panel">
+                    <div class="shop-head">
+                        <h2>🛒 波次商店</h2>
+                        <button class="shop-refresh-btn" id="shopRefreshBtn" title="花费货币刷新货架">🔄 刷新 <span class="shop-refresh-cost">🪙<span id="shopRefreshCost">1</span></span></button>
+                    </div>
+                    <p class="panel-sub">当前金币 <span id="shopCoins">0</span> · 商品价格随波次上浮 · 每次刷新费用递增</p>
+                    <div class="talent-list" id="shopList"></div>
+                    <div class="talent-footer">
+                        <span class="talent-hint">提示:购买后立即永久生效</span>
+                        <button class="big-btn" id="shopCloseBtn">离开商店</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 通关弹窗(20波完成,层级最高) -->
+            <div class="overlay victory-overlay" id="victoryPanel" hidden>
+                <div class="panel victory-panel">
+                    <h2 class="victory-title">恭喜通关！</h2>
+                    <p class="panel-sub">第 <span id="victoryCycle">1</span> 轮 20 波挑战完成</p>
+                    <div class="victory-btns">
+                        <button class="big-btn victory-btn" id="victoryContinueBtn">继续游戏</button>
+                        <button class="big-btn victory-btn" id="victoryEndBtn">结束游戏</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 暂停面板 -->
+            <div class="overlay" id="pausePanel" hidden>
+                <div class="panel pause-panel">
+                    <h2>已暂停</h2>
+                    <div class="volume-section">
+                        <div class="volume-row">
+                            <span class="volume-icon">🔊</span>
+                            <span class="volume-label">音量</span>
+                            <span class="volume-val" id="volumeVal">35</span>
+                        </div>
+                        <div class="volume-control">
+                            <input type="range" id="volumeSlider" min="0" max="100" value="35" step="5">
+                            <div class="volume-ticks">
+                                <span>0</span><span>50</span><span>100</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="big-btn" id="resumeBtn">继续</button>
+                    <button class="ghost-btn" id="restartBtn1">重新开始</button>
+                </div>
+            </div>
+
+            <!-- v20:时间触发天赋面板已移除(天赋获取改为波次商店 shopPanel) -->
+
+            <!-- 剧情预言面板(剧情模式缇宝首次出战触发,视觉风格与天赋面板一致) -->
+            <div class="overlay talent-overlay" id="prophecyPanel" hidden>
+                <div class="panel talent-panel prophecy-panel">
+                    <h2>🔮 预言</h2>
+                    <p class="panel-sub">剧情模式 · 缇宝</p>
+                    <div class="talent-list prophecy-list">
+                        <div class="talent-card rarity-legendary prophecy-card">
+                            <div class="talent-head">
+                                <div class="talent-icon">🔮</div>
+                                <div class="talent-meta">
+                                    <div class="talent-name">
+                                        <span>缇宝的预言</span>
+                                        <span class="talent-rarity r-legendary">剧情</span>
+                                    </div>
+                                    <div class="talent-type">星神低语 · 命运的碎片</div>
+                                </div>
+                            </div>
+                            <div class="talent-desc prophecy-text">“汝将碎作千片，凋零在他乡的土壤。”</div>
+                        </div>
+                    </div>
+                    <div class="talent-footer">
+                        <span class="talent-hint">提示:预言将在未来的战斗中应验</span>
+                        <button class="big-btn prophecy-confirm-btn" id="prophecyConfirmBtn">聆听完毕</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 随机事件面板(每波 10% 概率触发,选择时暂停游戏) -->
+            <div class="overlay event-overlay" id="eventPanel" hidden>
+                <div class="panel event-panel">
+                    <h2><span id="eventIcon">❓</span> <span id="eventName">遭遇事件</span></h2>
+                    <p class="panel-sub event-desc" id="eventDesc"></p>
+                    <div class="event-options" id="eventOptions"></div>
+                    <div class="event-footer">
+                        <span class="event-hint">提示:先点选一个选项,再点击确认生效</span>
+                        <button class="big-btn event-confirm-btn" id="eventConfirmBtn" disabled>确认选择</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 结算面板 -->
+            <div class="overlay" id="overPanel" hidden>
+                <div class="panel">
+                    <h2 class="dead" id="overTitle">舰船损毁</h2>
+                    <div class="result">
+                        <div>通关波数(到达) <b id="overWave">1</b></div>
+                        <div>击杀数 <b id="overKills">0</b></div>
+                        <div>最高连击 <b id="overCombo">0</b></div>
+                        <div>剩余生命值 <b id="overHp">0</b></div>
+                        <div>得分 <b id="overScore">0</b></div>
+                        <div>最高分 <b id="overBest">0</b></div>
+                        <div id="newBest" class="new-best" hidden>新纪录!</div>
+                    </div>
+                    <button class="big-btn" id="restartBtn2">再来一次</button>
+                    <a href="../../index.html" class="ghost-btn" id="overBackMenuLink">返回菜单</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 玩家属性面板 -->
+        <aside class="status">
+            <div class="status-title">当前属性</div>
+            <ul id="statusList"></ul>
+        </aside>
+    </div>
+
+    <script src="game.js?v=23"></script>
+    <!-- 终极技能测试脚本:延迟加载,确保不影响主程序。如需跑测试,可在控制台手动执行 -->
+    <script defer onerror="console.warn('[UltimateTest] 脚本加载已跳过,不影响游戏')">
+    (function () {
+        try {
+            var s = document.createElement("script");
+            s.src = "ultimate.test.js?v=9";
+            s.defer = true;
+            s.onerror = function () { console.warn("[UltimateTest] 加载失败,不影响游戏"); };
+            document.head.appendChild(s);
+        } catch (e) {
+            console.warn("[UltimateTest] 注入脚本时出错,跳过:", e.message);
+        }
+    })();
+    </script>
+</body>
+</html>

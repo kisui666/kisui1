@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Game JS Syntax Check</title>
+</head>
+<body>
+    <h1>Game JS Syntax Check</h1>
+    <div id="result">Loading game.js...</div>
+    <div id="errors" style="color:red;white-space:pre-wrap;margin-top:20px"></div>
+
+    <h2 style="margin-top:40px">Ultimate Test JS Syntax Check</h2>
+    <div id="testResult">Loading ultimate.test.js...</div>
+    <div id="testErrors" style="color:red;white-space:pre-wrap;margin-top:20px"></div>
+
+    <script>
+    // Capture all errors
+    window.addEventListener('error', function(e) {
+        var errorsDiv = document.getElementById('errors');
+        errorsDiv.textContent += 'Error: ' + e.message + '\n';
+        errorsDiv.textContent += 'Filename: ' + e.filename + '\n';
+        errorsDiv.textContent += 'Line: ' + e.lineno + ', Column: ' + e.colno + '\n\n';
+    }, true);
+
+    // Load game.js
+    fetch('game.js?v=11')
+        .then(function(r) { return r.text(); })
+        .then(function(code) {
+            var resultDiv = document.getElementById('result');
+            try {
+                new Function(code);
+                resultDiv.textContent = 'SUCCESS: game.js has no syntax errors!';
+                resultDiv.style.color = 'green';
+            } catch(e) {
+                resultDiv.textContent = 'FAIL: game.js has syntax errors!';
+                resultDiv.style.color = 'red';
+                
+                var errorsDiv = document.getElementById('errors');
+                errorsDiv.textContent = 'Error: ' + e.message + '\n';
+                if (e.lineNumber) errorsDiv.textContent += 'Line: ' + e.lineNumber + '\n';
+                if (e.columnNumber) errorsDiv.textContent += 'Column: ' + e.columnNumber + '\n';
+                
+                // Try to show the problematic line
+                if (e.lineNumber) {
+                    var lines = code.split('\n');
+                    var line = lines[e.lineNumber - 1];
+                    if (line) {
+                        errorsDiv.textContent += '\nProblematic line ' + e.lineNumber + ':\n';
+                        errorsDiv.textContent += line.substring(0, 200) + '\n';
+                        if (e.columnNumber) {
+                            errorsDiv.textContent += ' '.repeat(e.columnNumber - 1) + '^\n';
+                        }
+                    }
+                }
+            }
+        })
+        .catch(function(e) {
+            document.getElementById('result').textContent = 'Failed to load game.js: ' + e.message;
+        });
+
+    // Also check ultimate.test.js
+    fetch('ultimate.test.js?v=11')
+        .then(function(r) { return r.text(); })
+        .then(function(code) {
+            try {
+                new Function(code);
+                document.getElementById('testResult').textContent = 'SUCCESS: ultimate.test.js has no syntax errors!';
+                document.getElementById('testResult').style.color = 'green';
+            } catch(e) {
+                document.getElementById('testResult').textContent = 'FAIL: ultimate.test.js has syntax errors!';
+                document.getElementById('testResult').style.color = 'red';
+                
+                var testErrorsDiv = document.getElementById('testErrors');
+                testErrorsDiv.textContent = 'Error: ' + e.message + '\n';
+                if (e.lineNumber) testErrorsDiv.textContent += 'Line: ' + e.lineNumber + '\n';
+                if (e.columnNumber) testErrorsDiv.textContent += 'Column: ' + e.columnNumber + '\n';
+                
+                if (e.lineNumber) {
+                    var lines = code.split('\n');
+                    var line = lines[e.lineNumber - 1];
+                    if (line) {
+                        testErrorsDiv.textContent += '\nProblematic line ' + e.lineNumber + ':\n';
+                        testErrorsDiv.textContent += line.substring(0, 200) + '\n';
+                    }
+                }
+            }
+        })
+        .catch(function(e) {
+            document.getElementById('testResult').textContent = 'Failed to load ultimate.test.js: ' + e.message;
+        });
+    </script>
+</body>
+</html>
