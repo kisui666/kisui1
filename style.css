@@ -900,6 +900,9 @@ html, body {
     align-items: center;
     justify-content: center;
     z-index: 20;
+    /* 允许高面板时 overlay 自身滚动,防止移动端面板被裁剪 */
+    overflow-y: auto;
+    padding: 12px 0;
 }
 /* hidden 属性优先级覆盖:display:flex 会盖住原生 hidden */
 .overlay[hidden] { display: none !important; }
@@ -1866,7 +1869,16 @@ html, body {
 .victory-btn:active { transform: scale(0.95); transition: transform .15s ease; }
 
 /* 商店面板 */
-.shop-panel { max-width: 460px; }
+.shop-panel {
+    max-width: 460px;
+    max-height: 92vh;     /* 移动端限高,超出可滚动 */
+    overflow-y: auto;
+}
+/* 升级/商店面板统一加移动端高度保护 */
+.talent-panel {
+    max-height: 92vh;
+    overflow-y: auto;
+}
 .shop-item-price {
     font-size: 14px;
     font-weight: 800;
